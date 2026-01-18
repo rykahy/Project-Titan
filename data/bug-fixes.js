@@ -115,7 +115,7 @@
     });
   }
   
-  // Fix 5: Handle site details panel
+  // Fix 5: Handle site details panel - Enhanced version
   window.addEventListener('site-details-ready', function(e) {
     const sites = e.detail.sites;
     console.log('Site details ready:', sites.length, 'sites');
@@ -123,54 +123,145 @@
     // If there's a site list element, populate it
     const sitesList = document.getElementById('statsList');
     if (sitesList && sites.length > 0) {
-      // Clear existing content
+      // Clear existing content (remove loading skeletons)
       sitesList.innerHTML = '';
       
-      // Add sites
+      // Add summary card first
+      const summaryCard = document.createElement('div');
+      summaryCard.className = 'stat-item';
+      summaryCard.style.background = 'linear-gradient(135deg, rgba(0,212,255,0.1), rgba(168,85,247,0.1))';
+      summaryCard.innerHTML = `
+        <div class="stat-header">
+          <span class="stat-site" style="color: var(--neon-cyan);">📊 Ringkasan Seluruh Region</span>
+        </div>
+        <div class="stat-metrics">
+          <div class="metric">
+            <div class="metric-value">${NETWORK_DATA.stats.totalSites}</div>
+            <div class="metric-label">Sites</div>
+          </div>
+          <div class="metric">
+            <div class="metric-value">${(NETWORK_DATA.stats.totalUsers / 1000).toFixed(1)}K</div>
+            <div class="metric-label">Users</div>
+          </div>
+          <div class="metric">
+            <div class="metric-value">${NETWORK_DATA.stats.avgLatency.toFixed(1)}</div>
+            <div class="metric-label">Avg Lat</div>
+          </div>
+          <div class="metric">
+            <div class="metric-value">145.2</div>
+            <div class="metric-label">Avg Speed</div>
+          </div>
+        </div>
+      `;
+      sitesList.appendChild(summaryCard);
+      
+      // Add individual sites
       sites.forEach(site => {
-        const siteCard = createSiteCard(site);
+        const siteCard = createEnhancedSiteCard(site);
         sitesList.appendChild(siteCard);
       });
+      
+      // Also update reliability panel
+      updateReliabilityPanel(sites);
     }
   });
   
-  function createSiteCard(site) {
+  function createEnhancedSiteCard(site) {
     const card = document.createElement('div');
-    card.className = 'stat-card';
+    card.className = 'stat-item';
     
     const statusClass = site.status.toLowerCase();
     const statusIcon = getStatusIcon(statusClass);
+    const healthScore = calculateSiteHealth(site);
     
     card.innerHTML = `
-      <div class="stat-card-header">
-        <div class="stat-site-name">${site.name}</div>
-        <div class="stat-badge ${statusClass}">${statusIcon} ${site.status}</div>
+      <div class="stat-header">
+        <span class="stat-site">
+          ${site.name.includes('STARLINK') ? '🛰️' : '📡'} ${site.name}
+        </span>
+        <span class="badge ${statusClass === 'excellent' ? 'badge-success' : statusClass === 'good' ? 'badge-warning' : 'badge-danger'}">
+          <span class="status-dot ${healthScore >= 90 ? 'online' : healthScore >= 80 ? 'warning' : 'offline'}"></span>
+          ${site.status}
+        </span>
       </div>
-      <div class="stat-card-body">
-        <div class="stat-row">
-          <span>Reliability:</span>
-          <span class="stat-value">${site.reliability}%</span>
+      <div style="font-size: 0.75rem; color: var(--text-muted); margin: 4px 0;">
+        Jakarta, DKI Jakarta
+      </div>
+      <div class="stat-metrics">
+        <div class="metric">
+          <div class="metric-value">${site.users}</div>
+          <div class="metric-label">Users</div>
         </div>
-        <div class="stat-row">
-          <span>Users:</span>
-          <span class="stat-value">${site.users}</span>
+        <div class="metric">
+          <div class="metric-value">${site.mbps.toFixed(1)}</div>
+          <div class="metric-label">Mbps</div>
         </div>
-        <div class="stat-row">
-          <span>Throughput:</span>
-          <span class="stat-value">${site.mbps} Mbps</span>
+        <div class="metric">
+          <div class="metric-value">${site.ms}</div>
+          <div class="metric-label">ms</div>
         </div>
-        <div class="stat-row">
-          <span>Latency:</span>
-          <span class="stat-value">${site.ms} ms</span>
-        </div>
-        <div class="stat-row">
-          <span>Jitter:</span>
-          <span class="stat-value">${site.jitter} ms</span>
+        <div class="metric">
+          <div class="metric-value">${site.jitter}</div>
+          <div class="metric-label">Jitter</div>
         </div>
       </div>
     `;
     
     return card;
+  }
+  
+  function calculateSiteHealth(site) {
+    // Calculate health score based on latency, jitter, and throughput
+    let score = 100;
+    
+    // Latency penalty (higher is worse)
+    if (site.ms > 60) score -= 15;
+    else if (site.ms > 50) score -= 10;
+    else if (site.ms > 40) score -= 5;
+    
+    // Jitter penalty
+    if (site.jitter > 20) score -= 10;
+    else if (site.jitter > 15) score -= 5;
+    
+    // Throughput bonus (higher is better)
+    if (site.mbps > 300) score += 5;
+    else if (site.mbps < 100) score -= 10;
+    
+    return Math.max(0, Math.min(100, score));
+  }
+  
+  function updateReliabilityPanel(sites) {
+    const reliabilityGrid = document.getElementById('reliabilityGrid');
+    if (!reliabilityGrid) return;
+    
+    reliabilityGrid.innerHTML = '';
+    
+    // Take top 6 sites by reliability
+    const topSites = [...sites]
+      .sort((a, b) => b.reliability - a.reliability)
+      .slice(0, 6);
+    
+    topSites.forEach(site => {
+      const item = document.createElement('div');
+      item.className = 'reliability-item';
+      
+      const uptimeColor = site.reliability >= 95 ? 'var(--neon-green)' : 
+                         site.reliability >= 90 ? 'var(--neon-yellow)' : 
+                         site.reliability >= 85 ? 'var(--neon-orange)' : 'var(--neon-red)';
+      
+      item.innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <span style="font-weight: 600; font-size: 0.85rem;">${site.name}</span>
+          <span style="color: ${uptimeColor}; font-family: 'Orbitron', monospace; font-weight: 700; font-size: 0.9rem;">
+            ${site.reliability.toFixed(2)}%
+          </span>
+        </div>
+        <div class="uptime-bar">
+          <div class="uptime-fill" style="width: ${site.reliability}%; background: ${uptimeColor};"></div>
+        </div>
+      `;
+      reliabilityGrid.appendChild(item);
+    });
   }
   
   function getStatusIcon(status) {

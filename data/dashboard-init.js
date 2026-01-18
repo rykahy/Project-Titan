@@ -35,6 +35,56 @@
       };
     }
     
+    // Stats/monitoring data
+    if (url.includes('limit=15')) {
+      const activeSites = NETWORK_DATA.sites.filter(s => s.type !== 'blankspot');
+      
+      return {
+        summary: {
+          total_sites: activeSites.length,
+          total_users: NETWORK_DATA.stats.totalUsers,
+          avg_latency_ms: NETWORK_DATA.stats.avgLatency.toFixed(1) + ' ms',
+          avg_throughput_mbps: '145.2 Mbps'
+        },
+        latest: NETWORK_DATA.siteDetails.map((site, idx) => ({
+          site_id: idx + 1,
+          site_name: site.name,
+          site_type: site.name.includes('STARLINK') ? 'STARLINK' : 'BTS',
+          district_name: 'Jakarta',
+          city_name: 'DKI Jakarta',
+          active_users: site.users,
+          throughput_mbps: site.mbps,
+          latency_ms: site.ms,
+          jitter_ms: site.jitter,
+          reliability: site.reliability
+        })),
+        reliability: NETWORK_DATA.siteDetails.reduce((acc, site, idx) => {
+          acc[idx + 1] = {
+            site_name: site.name,
+            uptime_pct: site.reliability
+          };
+          return acc;
+        }, {}),
+        alerts: []
+      };
+    }
+    
+    // Chart data
+    if (url.includes('days=')) {
+      return {
+        performance: {
+          timestamps: NETWORK_DATA.performance.map((d, i) => {
+            const date = new Date();
+            date.setDate(date.getDate() - (NETWORK_DATA.performance.length - i));
+            return date.toISOString();
+          }),
+          throughput: NETWORK_DATA.performance.map(d => d.throughput),
+          latency: NETWORK_DATA.performance.map(d => d.latency),
+          users: NETWORK_DATA.performance.map(d => d.users)
+        }
+      };
+    }
+    
     // Default map data
     return {
       sites: {
@@ -75,18 +125,30 @@
         starlink_count: NETWORK_DATA.sites.filter(s => s.type === 'starlink').length,
         bts_count: NETWORK_DATA.sites.filter(s => s.type === 'bts').length,
         blankspot_count: NETWORK_DATA.sites.filter(s => s.type === 'blankspot').length,
-        total_sites: NETWORK_DATA.sites.filter(s => s.type !== 'blankspot').length
+        total_sites: NETWORK_DATA.sites.filter(s => s.type !== 'blankspot').length,
+        total_users: NETWORK_DATA.stats.totalUsers,
+        avg_latency_ms: NETWORK_DATA.stats.avgLatency.toFixed(1) + ' ms',
+        avg_throughput_mbps: '145.2 Mbps'
       },
       latest: NETWORK_DATA.siteDetails.map((site, idx) => ({
         site_id: idx + 1,
         site_name: site.name,
-        reliability: site.reliability,
-        users: site.users,
+        site_type: site.name.includes('STARLINK') ? 'STARLINK' : 'BTS',
+        district_name: 'Jakarta',
+        city_name: 'DKI Jakarta',
+        active_users: site.users,
         throughput_mbps: site.mbps,
         latency_ms: site.ms,
         jitter_ms: site.jitter,
-        status: site.status
+        reliability: site.reliability
       })),
+      reliability: NETWORK_DATA.siteDetails.reduce((acc, site, idx) => {
+        acc[idx + 1] = {
+          site_name: site.name,
+          uptime_pct: site.reliability
+        };
+        return acc;
+      }, {}),
       site_metrics: {}
     };
   };
@@ -183,5 +245,18 @@
       console.log('✓ TITAN Dashboard initialized with static data');
     }, 100);
   }
+  
+  // Also trigger on window load for extra safety
+  window.addEventListener('load', function() {
+    // Double-check that site details are rendered
+    setTimeout(() => {
+      const statsList = document.getElementById('statsList');
+      if (statsList && statsList.children.length <= 3) {
+        // If still showing skeleton loaders, force render
+        console.log('Force rendering site details...');
+        initializeSiteDetails();
+      }
+    }, 500);
+  });
   
 })();

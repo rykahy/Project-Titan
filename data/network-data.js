@@ -185,12 +185,84 @@ const NETWORK_DATA = {
     },
     {
       name: 'BTS - Kuta Alam',
-      status: 'POOR',
+      status: 'GOOD',
       reliability: 94.88,
       users: 56,
       mbps: 154.2,
       ms: 62,
       jitter: 19
+    },
+    {
+      name: 'BTS - Medan Kota',
+      status: 'EXCELLENT',
+      reliability: 93.45,
+      users: 82,
+      mbps: 198.7,
+      ms: 48,
+      jitter: 14
+    },
+    {
+      name: 'STARLINK - Medan',
+      status: 'EXCELLENT',
+      reliability: 97.12,
+      users: 128,
+      mbps: 312.4,
+      ms: 24,
+      jitter: 6
+    },
+    {
+      name: 'BTS - Padang Barat',
+      status: 'GOOD',
+      reliability: 88.67,
+      users: 61,
+      mbps: 142.3,
+      ms: 58,
+      jitter: 21
+    },
+    {
+      name: 'STARLINK - Jakarta',
+      status: 'EXCELLENT',
+      reliability: 98.34,
+      users: 245,
+      mbps: 456.8,
+      ms: 18,
+      jitter: 4
+    },
+    {
+      name: 'BTS - Jakarta Pusat',
+      status: 'EXCELLENT',
+      reliability: 95.23,
+      users: 134,
+      mbps: 234.5,
+      ms: 42,
+      jitter: 12
+    },
+    {
+      name: 'STARLINK - Bandung',
+      status: 'EXCELLENT',
+      reliability: 96.78,
+      users: 178,
+      mbps: 389.2,
+      ms: 21,
+      jitter: 5
+    },
+    {
+      name: 'BTS - Semarang Tengah',
+      status: 'GOOD',
+      reliability: 91.45,
+      users: 95,
+      mbps: 187.6,
+      ms: 51,
+      jitter: 16
+    },
+    {
+      name: 'STARLINK - Surabaya',
+      status: 'EXCELLENT',
+      reliability: 97.89,
+      users: 198,
+      mbps: 423.1,
+      ms: 19,
+      jitter: 5
     }
   ]
 };
