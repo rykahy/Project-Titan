@@ -42,79 +42,7 @@ titan-static/
 └── data/
     ├── network-data.js     # Static network data
     └── dashboard-init.js   # Dashboard initialization
-```
-
-## 🌐 Deployment to GitHub Pages
-
-### Method 1: Via Git Commands
-
-```bash
-# Clone/Initialize your repository
-git clone https://github.com/rykahy/Project-Titan.git
-cd Project-Titan
-
-# Copy all files from titan-static to your repo
-cp -r /path/to/titan-static/* .
-
-# Add all files
-git add .
-
-# Commit changes
-git commit -m "Deploy TITAN Dashboard static version"
-
-# Push to GitHub
-git push origin main
-```
-
-### Method 2: Direct Upload to GitHub
-
-1. Go to https://github.com/rykahy/Project-Titan
-2. Click "Add file" → "Upload files"
-3. Drag and drop all files from `titan-static` folder
-4. Commit changes
-
-### Enable GitHub Pages
-
-1. Go to repository Settings
-2. Navigate to "Pages" section
-3. Under "Source", select "main" branch
-4. Click "Save"
-5. Your site will be available at: https://rykahy.github.io/Project-Titan/
-
-## 🔧 Configuration
-
-### Updating Network Data
-
-Edit `data/network-data.js` to modify:
-- **Sites**: Add/remove network sites (Starlink, BTS, Blankspots)
-- **Stats**: Update overall statistics
-- **Performance**: Modify historical performance data
-- **Site Details**: Update detailed monitoring information
-
-```javascript
-const NETWORK_DATA = {
-  stats: {
-    totalSites: 453,
-    totalUsers: 84203,
-    avgLatency: 66.8,
-    avgJitter: 87.1
-  },
-  sites: [
-    {
-      id: 1,
-      name: 'Starlink - Jakarta',
-      type: 'starlink',
-      lat: -6.2088,
-      lng: 106.8456,
-      status: 'excellent',
-      users: 4523,
-      latency: 26,
-      jitter: 11
-    },
-    // ... more sites
-  ]
-};
-```
+---
 
 ### Customizing Themes
 
@@ -179,19 +107,6 @@ To add real-time capabilities, connect to a backend API service.
   - Blankspots: 18 areas
 - **Coverage**: Java & Sumatra islands
 
-## 👨‍💻 Development
-
-### Local Testing
-
-```bash
-# Serve locally with Python
-python3 -m http.server 8000
-
-# Or with Node.js
-npx http-server
-
-# Access at http://localhost:8000
-```
 
 ### Browser Compatibility
 
@@ -200,15 +115,12 @@ npx http-server
 - ✅ Safari 14+
 - ✅ Mobile browsers (iOS Safari, Chrome Mobile)
 
-## 📄 License
-
-Educational project - Telkom University Jakarta
 
 ## 🤝 Credits
 
 **Developer**: Riyooo (Riyo Haqiqi)  
 **Institution**: Telkom University Jakarta  
-**Program**: Telecommunications Engineering  
+**Program**: Telecommunications Engineering
 **Project**: TITAN - Network Operations Center
 
 ---
