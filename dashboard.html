@@ -1,0 +1,1435 @@
+
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="TITAN - Telecommunication Infrastructure & Technology for Access in Nusantara">
+  <title>TITAN Dashboard • Network Operations Center</title>
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Rajdhani:wght@300;400;500;600;700&family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Leaflet HD Map -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet.heat/dist/leaflet-heat.js"></script>
+  
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  
+  <!-- Custom Styles -->
+  <link rel="stylesheet" href="assets/css/styles.css">
+  
+  <style>
+    /* Additional styles for location filters */
+    .location-filters {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      padding: 12px 16px;
+      background: rgba(0, 0, 0, 0.2);
+      border-bottom: 1px solid var(--border-subtle);
+    }
+    
+    .filter-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    
+    .filter-label {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      white-space: nowrap;
+    }
+    
+    .filter-select {
+      min-width: 140px;
+      padding: 6px 10px;
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid var(--border-subtle);
+      border-radius: 6px;
+      color: var(--text-primary);
+      font-size: 0.85rem;
+    }
+    
+    .filter-select:focus {
+      outline: none;
+      border-color: var(--neon-blue);
+    }
+    
+    .filter-divider {
+      width: 1px;
+      height: 24px;
+      background: var(--border-subtle);
+      margin: 0 8px;
+    }
+    
+    .map-info-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 16px;
+      background: rgba(0, 212, 255, 0.05);
+      border-top: 1px solid var(--border-subtle);
+    }
+    
+    .map-info-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.85rem;
+    }
+    
+    .map-info-value {
+      font-family: 'Orbitron', monospace;
+      font-weight: 600;
+    }
+    
+    .map-info-value.starlink { color: var(--neon-blue); }
+    .map-info-value.bts { color: var(--neon-orange); }
+    .map-info-value.blankspot { color: var(--neon-red); }
+    .map-info-value.total { color: var(--neon-cyan); }
+    
+    .chart-tabs {
+      display: flex;
+      gap: 4px;
+      margin-bottom: 12px;
+    }
+    
+    .chart-tab {
+      padding: 6px 12px;
+      background: transparent;
+      border: 1px solid var(--border-subtle);
+      border-radius: 6px;
+      color: var(--text-secondary);
+      font-size: 0.8rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    .chart-tab:hover {
+      border-color: var(--neon-blue);
+      color: var(--neon-blue);
+    }
+    
+    .chart-tab.active {
+      background: rgba(0, 212, 255, 0.2);
+      border-color: var(--neon-blue);
+      color: var(--neon-blue);
+    }
+    
+    /* Responsive adjustments */
+    @media (max-width: 1200px) {
+      .location-filters {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+      .filter-divider {
+        display: none;
+      }
+    }
+  </style>
+</head>
+<body class="theme-blue">
+  
+  <!-- Navigation Bar -->
+  <nav class="navbar">
+    <div class="navbar-inner">
+      <div class="navbar-brand">
+        <div class="brand-icon">🛰️</div>
+        <div class="brand-text">
+          <div class="brand-title">TITAN</div>
+          <div class="brand-subtitle">Jawa & Sumatera Coverage</div>
+        </div>
+      </div>
+      
+      <div class="navbar-controls">
+        <div class="toggle-wrapper">
+          <span class="status-dot online"></span>
+          <span class="text-secondary" style="font-size: 0.85rem;">Live Data</span>
+        </div>
+        
+        <select id="themeSelect" class="form-select" style="width: 150px;">
+          <option value="theme-blue">🔵 Cyber Blue</option>
+          <option value="theme-pink">🩷 Neon Pink</option>
+          <option value="theme-obsidian">⚫ Obsidian</option>
+          <option value="theme-emerald">💚 Emerald</option>
+        </select>
+        
+        <!-- Notification Bell -->
+        <div class="navbar-notification" id="notifDropdown">
+          <button class="notif-btn" onclick="toggleNotifications()">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0"/>
+            </svg>
+            <span class="notif-badge" id="notifCount">3</span>
+          </button>
+          <div class="notif-dropdown" id="notifDropdownMenu">
+            <div class="notif-header">
+              <span>🔔 Notifikasi</span>
+              <button class="notif-clear" onclick="clearNotifications()">Hapus semua</button>
+            </div>
+            <div class="notif-list" id="notifList">
+              <div class="notif-item unread">
+                <div class="notif-icon warning">⚠️</div>
+                <div class="notif-content">
+                  <div class="notif-title">High Latency Alert</div>
+                  <div class="notif-desc">BTS Kebayoran Baru latency >100ms</div>
+                  <div class="notif-time">5 menit lalu</div>
+                </div>
+              </div>
+              <div class="notif-item unread">
+                <div class="notif-icon info">📊</div>
+                <div class="notif-content">
+                  <div class="notif-title">Traffic Peak Detected</div>
+                  <div class="notif-desc">Region Jakarta Selatan +40% traffic</div>
+                  <div class="notif-time">15 menit lalu</div>
+                </div>
+              </div>
+              <div class="notif-item">
+                <div class="notif-icon success">✅</div>
+                <div class="notif-content">
+                  <div class="notif-title">Site Online</div>
+                  <div class="notif-desc">Starlink Batam kembali online</div>
+                  <div class="notif-time">1 jam lalu</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Profile Dropdown -->
+        <div class="navbar-profile" id="profileDropdown">
+          <button class="profile-btn" onclick="toggleProfile()">
+            <div class="profile-avatar">
+              <?= strtoupper(substr($_SESSION['uname'] ?? 'U', 0, 1)); ?>
+            </div>
+            <span class="profile-name"><?= htmlspecialchars($_SESSION['uname'] ?? 'User'); ?></span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="6 9 12 15 18 9"/>
+            </svg>
+          </button>
+          <div class="profile-dropdown" id="profileDropdownMenu">
+            <div class="profile-header">
+              <div class="profile-avatar large">
+                <?= strtoupper(substr($_SESSION['uname'] ?? 'U', 0, 1)); ?>
+              </div>
+              <div class="profile-info">
+                <div class="profile-name-lg"><?= htmlspecialchars($_SESSION['uname'] ?? 'User'); ?></div>
+                <div class="profile-role">Administrator</div>
+              </div>
+            </div>
+            <div class="profile-menu">
+              <a href="#" class="profile-menu-item" onclick="openProfileModal(); return false;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"/>
+                </svg>
+                Edit Profile
+              </a>
+              <a href="#" class="profile-menu-item" onclick="openSettingsModal(); return false;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                </svg>
+                Pengaturan
+              </a>
+              <a href="landing.php" class="profile-menu-item">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>
+                </svg>
+                Beranda
+              </a>
+              <div class="profile-divider"></div>
+              <a href="#" class="profile-menu-item logout">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/>
+                </svg>
+                Logout
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </nav>
+  
+  <!-- Profile Modal -->
+  <div class="modal-overlay" id="profileModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>👤 Edit Profile</h3>
+        <button class="modal-close" onclick="closeProfileModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="profile-edit-avatar">
+          <div class="profile-avatar xlarge"><?= strtoupper(substr($_SESSION['uname'] ?? 'U', 0, 1)); ?></div>
+          <button class="btn btn-ghost">📷 Ubah Foto</button>
+        </div>
+        <form class="profile-form">
+          <div class="form-group">
+            <label class="form-label">Username</label>
+            <input type="text" class="form-input" value="<?= htmlspecialchars($_SESSION['uname'] ?? ''); ?>" readonly>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Nama Lengkap</label>
+            <input type="text" class="form-input" placeholder="Masukkan nama lengkap" value="Administrator">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Email</label>
+            <input type="email" class="form-input" placeholder="email@example.com" value="admin@titan.id">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Password Baru</label>
+            <input type="password" class="form-input" placeholder="Kosongkan jika tidak ingin ubah">
+          </div>
+          <button type="button" class="btn btn-primary" style="width: 100%;" onclick="saveProfile()">
+            💾 Simpan Perubahan
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Settings Modal -->
+  <div class="modal-overlay" id="settingsModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>⚙️ Pengaturan</h3>
+        <button class="modal-close" onclick="closeSettingsModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="settings-group">
+          <div class="settings-item">
+            <div class="settings-info">
+              <div class="settings-title">Notifikasi Email</div>
+              <div class="settings-desc">Terima notifikasi alert via email</div>
+            </div>
+            <input type="checkbox" class="toggle" checked>
+          </div>
+          <div class="settings-item">
+            <div class="settings-info">
+              <div class="settings-title">Notifikasi Push</div>
+              <div class="settings-desc">Terima notifikasi di browser</div>
+            </div>
+            <input type="checkbox" class="toggle" checked>
+          </div>
+          <div class="settings-item">
+            <div class="settings-info">
+              <div class="settings-title">Dark Mode</div>
+              <div class="settings-desc">Gunakan tema gelap</div>
+            </div>
+            <input type="checkbox" class="toggle" checked>
+          </div>
+          <div class="settings-item">
+            <div class="settings-info">
+              <div class="settings-title">Auto Refresh Data</div>
+              <div class="settings-desc">Refresh data setiap 30 detik</div>
+            </div>
+            <input type="checkbox" class="toggle">
+          </div>
+        </div>
+        <button type="button" class="btn btn-primary" style="width: 100%; margin-top: 20px;" onclick="saveSettings()">
+          💾 Simpan Pengaturan
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Dashboard -->
+  <main class="dashboard-container">
+    <div class="dashboard-grid">
+      
+      <!-- MAP SECTION -->
+      <section class="card area-map">
+        <div class="card-header">
+          <h2 class="card-title">
+            <span class="card-title-icon">🗺️</span>
+            Peta Infrastruktur Jaringan
+          </h2>
+          <div style="display: flex; gap: 8px; align-items: center;">
+            <select id="mapStyle" class="form-select" style="width: 120px;">
+              <option value="dark">Dark Mode</option>
+              <option value="satellite">Satellite</option>
+              <option value="terrain">Terrain</option>
+              <option value="standard">Standard</option>
+            </select>
+            <div class="toggle-wrapper">
+              <input type="checkbox" class="toggle" id="heatToggle">
+              <label for="heatToggle" class="text-secondary" style="font-size: 0.8rem;">Heat</label>
+            </div>
+            <div class="toggle-wrapper">
+              <input type="checkbox" class="toggle" id="blankspotToggle" checked>
+              <label for="blankspotToggle" class="text-secondary" style="font-size: 0.8rem;">Blankspot</label>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Location Filters -->
+        <div class="location-filters">
+          <div class="filter-group">
+            <span class="filter-label">🏝️ Pulau:</span>
+            <select id="filterIsland" class="filter-select">
+              <option value="ALL">Semua Pulau</option>
+              <option value="JAWA">Pulau Jawa</option>
+              <option value="SUMATERA">Pulau Sumatera</option>
+            </select>
+          </div>
+          
+          <div class="filter-divider"></div>
+          
+          <div class="filter-group">
+            <span class="filter-label">🏛️ Provinsi:</span>
+            <select id="filterProvince" class="filter-select">
+              <option value="ALL">Semua Provinsi</option>
+            </select>
+          </div>
+          
+          <div class="filter-divider"></div>
+          
+          <div class="filter-group">
+            <span class="filter-label">🏙️ Kota:</span>
+            <select id="filterCity" class="filter-select">
+              <option value="ALL">Semua Kota</option>
+            </select>
+          </div>
+          
+          <div class="filter-divider"></div>
+          
+          <div class="filter-group">
+            <span class="filter-label">📍 Kecamatan:</span>
+            <select id="filterDistrict" class="filter-select">
+              <option value="ALL">Semua Kecamatan</option>
+            </select>
+          </div>
+          
+          <button id="btnResetFilters" class="btn btn-ghost" style="margin-left: auto; padding: 6px 12px; font-size: 0.8rem;">
+            🔄 Reset
+          </button>
+        </div>
+        
+        <div class="card-body" style="padding: 0;">
+          <div class="map-container" style="height: 480px;">
+            <div id="map"></div>
+          </div>
+        </div>
+        
+        <div class="map-info-bar">
+          <div class="map-info-item">
+            <span>🛰️ Starlink:</span>
+            <span class="map-info-value starlink" id="countStarlink">0</span>
+          </div>
+          <div class="map-info-item">
+            <span>📡 BTS:</span>
+            <span class="map-info-value bts" id="countBTS">0</span>
+          </div>
+          <div class="map-info-item">
+            <span>🔴 Blankspot:</span>
+            <span class="map-info-value blankspot" id="countBlankspot">0</span>
+          </div>
+          <div class="map-info-item">
+            <span>📊 Total Site:</span>
+            <span class="map-info-value total" id="countTotal">0</span>
+          </div>
+          <div class="map-legend" style="margin-left: auto; display: flex; gap: 16px;">
+            <div class="legend-item">
+              <div class="legend-dot starlink"></div>
+              <span>Starlink</span>
+            </div>
+            <div class="legend-item">
+              <div class="legend-dot bts"></div>
+              <span>BTS</span>
+            </div>
+            <div class="legend-item">
+              <div class="legend-dot blankspot"></div>
+              <span>Blankspot</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- MONITORING STATS -->
+      <section class="card area-stats">
+        <div class="card-header">
+          <h2 class="card-title">
+            <span class="card-title-icon">📊</span>
+            Monitoring Real-Time
+          </h2>
+          <span class="badge badge-info" id="statsRefresh">Live</span>
+        </div>
+        <div class="card-body scroll" id="statsContainer" style="max-height: 450px;">
+          <div class="stats-list" id="statsList">
+            <div class="skeleton loading-shimmer" style="height: 80px;"></div>
+            <div class="skeleton loading-shimmer" style="height: 80px;"></div>
+            <div class="skeleton loading-shimmer" style="height: 80px;"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- CHARTS -->
+      <section class="card area-charts">
+        <div class="card-header">
+          <h2 class="card-title">
+            <span class="card-title-icon">📈</span>
+            Grafik Performa Jaringan
+          </h2>
+          <div style="display: flex; gap: 8px;">
+            <select id="chartPeriod" class="form-select" style="width: 100px;">
+              <option value="7">7 Hari</option>
+              <option value="14" selected>14 Hari</option>
+              <option value="30">30 Hari</option>
+            </select>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="chart-tabs">
+            <button class="chart-tab active" data-chart="performance">📊 Performa</button>
+            <button class="chart-tab" data-chart="bandwidth">📶 Bandwidth</button>
+            <button class="chart-tab" data-chart="users">👥 Users</button>
+          </div>
+          <div class="chart-container" style="height: 260px;">
+            <canvas id="mainChart"></canvas>
+          </div>
+        </div>
+      </section>
+
+      <!-- RELIABILITY -->
+      <section class="card area-reliability">
+        <div class="card-header">
+          <h2 class="card-title">
+            <span class="card-title-icon">⚡</span>
+            Reliability & Uptime
+          </h2>
+        </div>
+        <div class="card-body scroll" style="max-height: 220px;">
+          <div class="reliability-grid" id="reliabilityGrid">
+            <div class="skeleton loading-shimmer" style="height: 60px;"></div>
+            <div class="skeleton loading-shimmer" style="height: 60px;"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- AI ASSISTANT -->
+      <section class="card area-ai">
+        <div class="card-header">
+          <h2 class="card-title">
+            <span class="card-title-icon">🤖</span>
+            TITAN AI Assistant
+          </h2>
+          <span class="badge badge-success">
+            <span class="status-dot online"></span>
+            Online
+          </span>
+        </div>
+        <div class="card-body" style="padding: 0;" id="aiContainer">
+        </div>
+      </section>
+
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <div style="display: flex; align-items: center; justify-content: center; gap: 16px; flex-wrap: wrap;">
+        <span>🛰️ TITAN Dashboard v2.0</span>
+        <span>•</span>
+        <span>Coverage: Jawa & Sumatera</span>
+        <span>•</span>
+        <span id="currentTime"></span>
+      </div>
+    </footer>
+  </main>
+
+  <!-- Scripts -->
+  <script src="assets/js/theme.js"></script>
+  <script src="assets/js/helpers.js"></script>
+  <script src="assets/js/ai-assistant.js"></script>
+  
+  <script>
+  // ============================================================
+  // TITAN Dashboard - Main Application
+  // Coverage: Pulau Jawa & Sumatera
+  // ============================================================
+
+  // Global state
+  let map, sitesLayer, blankLayer, heatLayer;
+  let allSiteFeatures = [];
+  let latestBySite = {};
+  let mainChart;
+  let titanAI;
+  let currentChartType = 'performance';
+  let chartData = null;
+
+  // Current filters
+  let filters = {
+    island: 'ALL',
+    province: 'ALL',
+    city: 'ALL',
+    district: 'ALL'
+  };
+
+  // Region data cache
+  let regionsCache = {
+    provinces: [],
+    cities: {},
+    districts: {}
+  };
+
+  // Map tile providers
+  const tileLayers = {
+    dark: {
+      url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+      attribution: '&copy; OpenStreetMap &copy; CARTO'
+    },
+    satellite: {
+      url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+      attribution: 'Tiles &copy; Esri'
+    },
+    terrain: {
+      url: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
+      attribution: '&copy; OpenTopoMap'
+    },
+    standard: {
+      url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+      attribution: '&copy; OpenStreetMap'
+    }
+  };
+
+  let currentTileLayer;
+
+  // ============ Filter Functions ============
+
+  async function loadRegions() {
+    try {
+      // Load hierarchy
+      const data = await jget('data/network-data.js?action=hierarchy');
+      regionsCache.hierarchy = data.hierarchy;
+      
+      // Populate provinces
+      updateProvinceOptions();
+    } catch (e) {
+      console.error('Failed to load regions:', e);
+    }
+  }
+
+  function updateProvinceOptions() {
+    const select = document.getElementById('filterProvince');
+    select.innerHTML = '<option value="ALL">Semua Provinsi</option>';
+    
+    if (!regionsCache.hierarchy) return;
+    
+    const filtered = filters.island === 'ALL' 
+      ? regionsCache.hierarchy 
+      : regionsCache.hierarchy.filter(p => p.island === filters.island);
+    
+    filtered.forEach(prov => {
+      const opt = document.createElement('option');
+      opt.value = prov.code;
+      opt.textContent = prov.name;
+      select.appendChild(opt);
+    });
+  }
+
+  function updateCityOptions() {
+    const select = document.getElementById('filterCity');
+    select.innerHTML = '<option value="ALL">Semua Kota</option>';
+    
+    if (!regionsCache.hierarchy || filters.province === 'ALL') return;
+    
+    const province = regionsCache.hierarchy.find(p => p.code === filters.province);
+    if (!province) return;
+    
+    province.cities.forEach(city => {
+      const opt = document.createElement('option');
+      opt.value = city.code;
+      opt.textContent = city.name;
+      select.appendChild(opt);
+    });
+  }
+
+  async function updateDistrictOptions() {
+    const select = document.getElementById('filterDistrict');
+    select.innerHTML = '<option value="ALL">Semua Kecamatan</option>';
+    
+    if (filters.province === 'ALL' || filters.city === 'ALL') return;
+    
+    try {
+      const data = await jget(`data/network-data.js?action=districts&province=${filters.province}&city=${filters.city}`);
+      data.districts.forEach(dist => {
+        if (dist.name !== 'ALL') {
+          const opt = document.createElement('option');
+          opt.value = dist.name;
+          opt.textContent = dist.name;
+          select.appendChild(opt);
+        }
+      });
+    } catch (e) {
+      console.error('Failed to load districts:', e);
+    }
+  }
+
+  function buildFilterQuery() {
+    const params = new URLSearchParams();
+    if (filters.island !== 'ALL') params.append('island', filters.island);
+    if (filters.province !== 'ALL') params.append('province', filters.province);
+    if (filters.city !== 'ALL') params.append('city', filters.city);
+    if (filters.district !== 'ALL') params.append('district', filters.district);
+    return params.toString();
+  }
+
+  // ============ Map Functions ============
+
+  function createMarkerIcon(type) {
+    const isStarlink = type === 'STARLINK';
+    const color = isStarlink ? '#00d4ff' : '#ff8c42';
+    
+    return L.divIcon({
+      className: 'custom-marker-wrapper',
+      html: `
+        <div style="position: relative; display: flex; align-items: center; justify-content: center;">
+          <div style="
+            position: absolute;
+            width: 28px;
+            height: 28px;
+            background: ${color}33;
+            border-radius: 50%;
+            animation: marker-pulse 2s ease-in-out infinite;
+          "></div>
+          <div style="
+            width: 14px;
+            height: 14px;
+            background: ${color};
+            border-radius: 50%;
+            border: 2px solid white;
+            box-shadow: 0 0 15px ${color};
+            z-index: 1;
+          "></div>
+        </div>
+      `,
+      iconSize: [28, 28],
+      iconAnchor: [14, 14]
+    });
+  }
+
+  function makeSitesLayer(geojson) {
+    if (sitesLayer) map.removeLayer(sitesLayer);
+    
+    sitesLayer = L.geoJSON(geojson, {
+      pointToLayer: (f, latlng) => {
+        const props = f.properties;
+        const type = props.type;
+        const id = props.id;
+        const metrics = latestBySite[id];
+        
+        const marker = L.marker(latlng, { icon: createMarkerIcon(type) });
+        
+        let popupContent = `
+          <div style="min-width: 240px; font-family: 'Rajdhani', sans-serif;">
+            <div style="font-size: 1.1rem; font-weight: 700; margin-bottom: 8px; color: ${type === 'STARLINK' ? '#00d4ff' : '#ff8c42'};">
+              ${type === 'STARLINK' ? '🛰️' : '📡'} ${props.name}
+            </div>
+            <div style="font-size: 0.85rem; margin-bottom: 8px; opacity: 0.8;">
+              ${props.district_name}, ${props.city_name}<br>
+              ${props.province_name}
+            </div>
+        `;
+        
+        if (metrics) {
+          const healthScore = calculateHealthScore(metrics.latency_ms, metrics.jitter_ms, metrics.throughput_mbps);
+          const health = getHealthStatus(healthScore);
+          
+          popupContent += `
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; font-size: 0.85rem;">
+              <div>👥 Users: <strong>${metrics.active_users}</strong></div>
+              <div>⚡ Speed: <strong>${metrics.throughput_mbps.toFixed(1)} Mbps</strong></div>
+              <div>📶 Latency: <strong>${metrics.latency_ms} ms</strong></div>
+              <div>📊 Jitter: <strong>${metrics.jitter_ms} ms</strong></div>
+            </div>
+            <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.1);">
+              <span style="padding: 3px 10px; border-radius: 12px; font-size: 0.75rem; background: ${health.class === 'badge-success' ? '#10b98133' : health.class === 'badge-warning' ? '#fbbf2433' : '#ef444433'}; color: ${health.class === 'badge-success' ? '#10b981' : health.class === 'badge-warning' ? '#fbbf24' : '#ef4444'};">
+                ${health.icon} ${health.label} (${healthScore}%)
+              </span>
+            </div>
+          `;
+        }
+        
+        popupContent += `</div>`;
+        marker.bindPopup(popupContent);
+        return marker;
+      }
+    }).addTo(map);
+  }
+
+  function updateHeatmap() {
+    if (heatLayer) { map.removeLayer(heatLayer); heatLayer = null; }
+    
+    const pts = [];
+    let maxA = 1;
+    
+    allSiteFeatures.forEach(f => {
+      const id = f.properties.id;
+      const lat = f.geometry.coordinates[1];
+      const lng = f.geometry.coordinates[0];
+      const metrics = latestBySite[id];
+      const a = metrics ? metrics.active_users : 0;
+      maxA = Math.max(maxA, a);
+      pts.push([lat, lng, a]);
+    });
+    
+    if (!pts.length) return;
+    
+    const norm = pts.map(p => [p[0], p[1], Math.max(0.05, p[2] / maxA)]);
+    heatLayer = L.heatLayer(norm, {
+      radius: 30,
+      blur: 20,
+      maxZoom: 13,
+      minOpacity: 0.3,
+      gradient: {
+        0.0: '#00d4ff00',
+        0.2: '#00d4ff44',
+        0.4: '#00f5d477',
+        0.6: '#fbbf24aa',
+        0.8: '#ff8c42cc',
+        1.0: '#ef4444ff'
+      }
+    });
+    
+    if (document.getElementById('heatToggle').checked) {
+      heatLayer.addTo(map);
+    }
+  }
+
+  async function loadMap() {
+    map = L.map('map', {
+      zoomControl: true,
+      attributionControl: false
+    });
+    
+    const defaultStyle = tileLayers.dark;
+    currentTileLayer = L.tileLayer(defaultStyle.url, {
+      maxZoom: 19,
+      attribution: defaultStyle.attribution
+    }).addTo(map);
+    
+    L.control.attribution({ position: 'bottomright' }).addTo(map);
+    
+    // Set initial view for Indonesia (Java + Sumatra)
+    map.setView([-2.5, 107.0], 5);
+    
+    await refreshMapData();
+  }
+
+  async function refreshMapData() {
+    try {
+      const query = buildFilterQuery();
+      const data = await jget(`data/network-data.js?${query}`);
+      
+      allSiteFeatures = data.sites.features;
+      
+      // Store metrics
+      if (data.site_metrics) {
+        latestBySite = data.site_metrics;
+      }
+      
+      // Create sites layer
+      makeSitesLayer(data.sites);
+      
+      // Create blankspot layer
+      if (blankLayer) map.removeLayer(blankLayer);
+      blankLayer = L.geoJSON(data.blankspots, {
+        style: {
+          color: '#ef4444',
+          fillColor: '#ef4444',
+          fillOpacity: 0.2,
+          weight: 2,
+          dashArray: '5, 5'
+        },
+        onEachFeature: (feature, layer) => {
+          if (feature.properties && feature.properties.name) {
+            layer.bindPopup(`
+              <div style="font-family: 'Rajdhani', sans-serif;">
+                <div style="font-size: 1rem; font-weight: 700; color: #ef4444;">
+                  🔴 ${feature.properties.name}
+                </div>
+                <div style="opacity: 0.8; margin-top: 4px;">Area dengan coverage terbatas</div>
+              </div>
+            `);
+          }
+        }
+      });
+      
+      if (document.getElementById('blankspotToggle').checked) {
+        blankLayer.addTo(map);
+      }
+      
+      // Update view based on data
+      if (data.view) {
+        map.setView(data.view.center, data.view.zoom);
+      }
+      
+      // Update counts
+      if (data.summary) {
+        document.getElementById('countStarlink').textContent = data.summary.starlink_count;
+        document.getElementById('countBTS').textContent = data.summary.bts_count;
+        document.getElementById('countBlankspot').textContent = data.summary.blankspot_count;
+        document.getElementById('countTotal').textContent = data.summary.total_sites;
+      }
+      
+      // Update heatmap
+      updateHeatmap();
+      
+    } catch (e) {
+      console.error('Map data error:', e);
+      showToast('Gagal memuat data peta', 'error');
+    }
+  }
+
+  // ============ Stats Functions ============
+
+  async function loadStats() {
+    try {
+      const query = buildFilterQuery();
+      const data = await jget(`data/network-data.js?${query}&limit=15`);
+      
+      // Update latestBySite
+      latestBySite = {};
+      data.latest.forEach(it => latestBySite[it.site_id] = it);
+      
+      const container = document.getElementById('statsList');
+      container.innerHTML = '';
+      
+      // Summary card
+      if (data.summary) {
+        const summaryEl = document.createElement('div');
+        summaryEl.className = 'stat-item';
+        summaryEl.style.background = 'linear-gradient(135deg, rgba(0,212,255,0.1), rgba(168,85,247,0.1))';
+        summaryEl.innerHTML = `
+          <div class="stat-header">
+            <span class="stat-site" style="color: var(--neon-cyan);">📊 Ringkasan ${filters.province !== 'ALL' ? data.filters.province : (filters.island !== 'ALL' ? filters.island : 'Seluruh Region')}</span>
+          </div>
+          <div class="stat-metrics">
+            <div class="metric">
+              <div class="metric-value">${data.summary.total_sites}</div>
+              <div class="metric-label">Sites</div>
+            </div>
+            <div class="metric">
+              <div class="metric-value">${fmtNumber(data.summary.total_users)}</div>
+              <div class="metric-label">Users</div>
+            </div>
+            <div class="metric">
+              <div class="metric-value">${data.summary.avg_latency_ms}</div>
+              <div class="metric-label">Avg Lat</div>
+            </div>
+            <div class="metric">
+              <div class="metric-value">${data.summary.avg_throughput_mbps}</div>
+              <div class="metric-label">Avg Speed</div>
+            </div>
+          </div>
+        `;
+        container.appendChild(summaryEl);
+      }
+      
+      // Individual sites
+      data.latest.forEach(item => {
+        const healthScore = calculateHealthScore(item.latency_ms, item.jitter_ms, item.throughput_mbps);
+        const health = getHealthStatus(healthScore);
+        
+        const row = document.createElement('div');
+        row.className = 'stat-item';
+        row.innerHTML = `
+          <div class="stat-header">
+            <span class="stat-site">
+              ${item.site_type === 'STARLINK' ? '🛰️' : '📡'} ${item.site_name}
+            </span>
+            <span class="badge ${health.class}">
+              <span class="status-dot ${healthScore >= 60 ? 'online' : healthScore >= 40 ? 'warning' : 'offline'}"></span>
+              ${health.label}
+            </span>
+          </div>
+          <div style="font-size: 0.75rem; color: var(--text-muted); margin: 4px 0;">
+            ${item.district_name}, ${item.city_name}
+          </div>
+          <div class="stat-metrics">
+            <div class="metric">
+              <div class="metric-value">${item.active_users}</div>
+              <div class="metric-label">Users</div>
+            </div>
+            <div class="metric">
+              <div class="metric-value">${item.throughput_mbps.toFixed(1)}</div>
+              <div class="metric-label">Mbps</div>
+            </div>
+            <div class="metric">
+              <div class="metric-value">${item.latency_ms}</div>
+              <div class="metric-label">ms</div>
+            </div>
+            <div class="metric">
+              <div class="metric-value">${item.jitter_ms}</div>
+              <div class="metric-label">Jitter</div>
+            </div>
+          </div>
+        `;
+        container.appendChild(row);
+      });
+      
+      // Reliability
+      renderReliability(data.reliability);
+      
+      // Update AI
+      if (titanAI) {
+        titanAI.updateNetworkData({
+          stats: data.latest,
+          summary: data.summary,
+          alerts: data.alerts
+        });
+      }
+      
+      // Refresh indicator
+      document.getElementById('statsRefresh').innerHTML = `
+        <span class="status-dot online"></span>
+        ${new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
+      `;
+      
+    } catch (e) {
+      console.error('Stats error:', e);
+    }
+  }
+
+  function renderReliability(reliability) {
+    const grid = document.getElementById('reliabilityGrid');
+    grid.innerHTML = '';
+    
+    Object.entries(reliability).slice(0, 6).forEach(([sid, v]) => {
+      const item = document.createElement('div');
+      item.className = 'reliability-item';
+      
+      const uptimeColor = v.uptime_pct >= 99 ? 'var(--neon-green)' : 
+                         v.uptime_pct >= 95 ? 'var(--neon-yellow)' : 'var(--neon-red)';
+      
+      item.innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <span style="font-weight: 600; font-size: 0.85rem;">${v.site_name}</span>
+          <span style="color: ${uptimeColor}; font-family: 'Orbitron', monospace; font-weight: 700; font-size: 0.9rem;">
+            ${v.uptime_pct}%
+          </span>
+        </div>
+        <div class="uptime-bar">
+          <div class="uptime-fill" style="width: ${v.uptime_pct}%; background: ${uptimeColor};"></div>
+        </div>
+      `;
+      grid.appendChild(item);
+    });
+  }
+
+  // ============ Chart Functions ============
+
+  async function loadChartData(days = 14) {
+    try {
+      const query = buildFilterQuery();
+      chartData = await jget(`data/network-data.js?days=${days}&${query}`);
+      renderChart(currentChartType);
+    } catch (e) {
+      console.error('Chart error:', e);
+    }
+  }
+
+  function renderChart(type) {
+    if (!chartData) return;
+    
+    const ctx = document.getElementById('mainChart').getContext('2d');
+    if (mainChart) mainChart.destroy();
+    
+    // Reduce data points for display
+    const maxPoints = 30;
+    const step = Math.ceil(chartData.performance.timestamps.length / maxPoints);
+    
+    const labels = chartData.performance.timestamps
+      .filter((_, i) => i % step === 0)
+      .map(ts => {
+        const d = new Date(ts);
+        return d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short' });
+      });
+    
+    let datasets = [];
+    let scales = {};
+    
+    if (type === 'performance') {
+      datasets = [
+        {
+          label: 'Throughput (Mbps)',
+          data: chartData.performance.throughput.filter((_, i) => i % step === 0),
+          borderColor: '#00d4ff',
+          backgroundColor: 'rgba(0, 212, 255, 0.1)',
+          tension: 0.4,
+          fill: true,
+          yAxisID: 'y'
+        },
+        {
+          label: 'Latency (ms)',
+          data: chartData.performance.latency.filter((_, i) => i % step === 0),
+          borderColor: '#ff8c42',
+          backgroundColor: 'rgba(255, 140, 66, 0.1)',
+          tension: 0.4,
+          fill: false,
+          yAxisID: 'y1'
+        }
+      ];
+      scales = {
+        y: { type: 'linear', display: true, position: 'left', title: { display: true, text: 'Mbps', color: '#00d4ff' }, ticks: { color: '#00d4ff' }, grid: { color: 'rgba(255,255,255,0.05)' } },
+        y1: { type: 'linear', display: true, position: 'right', title: { display: true, text: 'ms', color: '#ff8c42' }, ticks: { color: '#ff8c42' }, grid: { drawOnChartArea: false } }
+      };
+    } else if (type === 'bandwidth') {
+      datasets = [{
+        label: 'Bandwidth (GB)',
+        data: chartData.bandwidth.bytes.filter((_, i) => i % step === 0).map(b => b / 1000000000),
+        borderColor: '#a855f7',
+        backgroundColor: 'rgba(168, 85, 247, 0.2)',
+        tension: 0.4,
+        fill: true
+      }];
+      scales = {
+        y: { title: { display: true, text: 'GB', color: '#a855f7' }, ticks: { color: '#a855f7' }, grid: { color: 'rgba(255,255,255,0.05)' } }
+      };
+    } else if (type === 'users') {
+      datasets = [{
+        label: 'Active Users',
+        data: chartData.users.counts.filter((_, i) => i % step === 0),
+        borderColor: '#10b981',
+        backgroundColor: 'rgba(16, 185, 129, 0.2)',
+        tension: 0.4,
+        fill: true
+      }];
+      scales = {
+        y: { title: { display: true, text: 'Users', color: '#10b981' }, ticks: { color: '#10b981' }, grid: { color: 'rgba(255,255,255,0.05)' } }
+      };
+    }
+    
+    mainChart = new Chart(ctx, {
+      type: 'line',
+      data: { labels, datasets },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: { display: true, position: 'top', labels: { color: '#94a3b8', usePointStyle: true, padding: 15 } },
+          tooltip: { backgroundColor: 'rgba(10, 22, 40, 0.95)', borderColor: 'rgba(0, 212, 255, 0.3)', borderWidth: 1, cornerRadius: 8 }
+        },
+        scales: {
+          x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#64748b', maxRotation: 0 } },
+          ...scales
+        }
+      }
+    });
+  }
+
+  // ============ Recommendations ============
+
+  async function loadRecommendations() {
+    try {
+      const query = buildFilterQuery();
+      const data = await jget(`api/api_recommendations.php?${query}`);
+      
+      if (titanAI) {
+        titanAI.updateRecommendations(data.recommendations);
+        titanAI.updateNetworkData({
+          ...titanAI.networkData,
+          prediction: data.forecast.next_month_bytes,
+          dailySmooth: data.forecast.daily_smooth_bytes
+        });
+      }
+    } catch (e) {
+      console.error('Recommendations error:', e);
+    }
+  }
+
+  // ============ Utilities ============
+
+  function updateTime() {
+    const el = document.getElementById('currentTime');
+    if (el) {
+      el.textContent = new Date().toLocaleString('id-ID', {
+        weekday: 'short',
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    }
+  }
+
+  // ============ Initialize ============
+
+  async function init() {
+    // Init theme
+    if (window.initThemeSelect) initThemeSelect('themeSelect');
+    
+    // Load regions first
+    await loadRegions();
+    
+    // Load map
+    await loadMap();
+    
+    // Load data
+    await loadStats();
+    await loadRecommendations();
+    await loadChartData();
+    
+    // Initialize AI
+    titanAI = new TitanAI('aiContainer');
+    
+    // ============ Event Listeners ============
+    
+    // Filter: Island
+    document.getElementById('filterIsland').addEventListener('change', async (e) => {
+      filters.island = e.target.value;
+      filters.province = 'ALL';
+      filters.city = 'ALL';
+      filters.district = 'ALL';
+      
+      updateProvinceOptions();
+      document.getElementById('filterProvince').value = 'ALL';
+      document.getElementById('filterCity').innerHTML = '<option value="ALL">Semua Kota</option>';
+      document.getElementById('filterDistrict').innerHTML = '<option value="ALL">Semua Kecamatan</option>';
+      
+      await refreshMapData();
+      await loadStats();
+    });
+    
+    // Filter: Province
+    document.getElementById('filterProvince').addEventListener('change', async (e) => {
+      filters.province = e.target.value;
+      filters.city = 'ALL';
+      filters.district = 'ALL';
+      
+      updateCityOptions();
+      document.getElementById('filterCity').value = 'ALL';
+      document.getElementById('filterDistrict').innerHTML = '<option value="ALL">Semua Kecamatan</option>';
+      
+      await refreshMapData();
+      await loadStats();
+    });
+    
+    // Filter: City
+    document.getElementById('filterCity').addEventListener('change', async (e) => {
+      filters.city = e.target.value;
+      filters.district = 'ALL';
+      
+      await updateDistrictOptions();
+      document.getElementById('filterDistrict').value = 'ALL';
+      
+      await refreshMapData();
+      await loadStats();
+    });
+    
+    // Filter: District
+    document.getElementById('filterDistrict').addEventListener('change', async (e) => {
+      filters.district = e.target.value;
+      
+      await refreshMapData();
+      await loadStats();
+    });
+    
+    // Reset filters
+    document.getElementById('btnResetFilters').addEventListener('click', async () => {
+      filters = { island: 'ALL', province: 'ALL', city: 'ALL', district: 'ALL' };
+      
+      document.getElementById('filterIsland').value = 'ALL';
+      document.getElementById('filterProvince').value = 'ALL';
+      document.getElementById('filterCity').value = 'ALL';
+      document.getElementById('filterDistrict').value = 'ALL';
+      
+      updateProvinceOptions();
+      document.getElementById('filterCity').innerHTML = '<option value="ALL">Semua Kota</option>';
+      document.getElementById('filterDistrict').innerHTML = '<option value="ALL">Semua Kecamatan</option>';
+      
+      await refreshMapData();
+      await loadStats();
+      
+      showToast('Filter direset', 'success');
+    });
+    
+    // Map style
+    document.getElementById('mapStyle').addEventListener('change', (e) => {
+      const style = tileLayers[e.target.value];
+      if (currentTileLayer) map.removeLayer(currentTileLayer);
+      currentTileLayer = L.tileLayer(style.url, { maxZoom: 19, attribution: style.attribution }).addTo(map);
+    });
+    
+    // Heatmap toggle
+    document.getElementById('heatToggle').addEventListener('change', (e) => {
+      if (heatLayer) {
+        if (e.target.checked) heatLayer.addTo(map);
+        else map.removeLayer(heatLayer);
+      }
+    });
+    
+    // Blankspot toggle
+    document.getElementById('blankspotToggle').addEventListener('change', (e) => {
+      if (blankLayer) {
+        if (e.target.checked) blankLayer.addTo(map);
+        else map.removeLayer(blankLayer);
+      }
+    });
+    
+    // Chart period
+    document.getElementById('chartPeriod').addEventListener('change', (e) => {
+      loadChartData(parseInt(e.target.value));
+    });
+    
+    // Chart tabs
+    document.querySelectorAll('.chart-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.chart-tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        currentChartType = tab.dataset.chart;
+        renderChart(currentChartType);
+      });
+    });
+    
+    // Auto-refresh
+    setInterval(loadStats, 15000);
+    setInterval(loadRecommendations, 60000);
+    
+    // Update time
+    updateTime();
+    setInterval(updateTime, 1000);
+    
+    console.log('✨ TITAN Dashboard v2.0 initialized - Coverage: Jawa & Sumatera');
+  }
+
+  // ============ Notifications & Profile ============
+  
+  function toggleNotifications() {
+    const dropdown = document.getElementById('notifDropdownMenu');
+    const profileDropdown = document.getElementById('profileDropdownMenu');
+    
+    // Close profile dropdown if open
+    profileDropdown.classList.remove('show');
+    
+    // Toggle notification dropdown
+    dropdown.classList.toggle('show');
+  }
+  
+  function toggleProfile() {
+    const dropdown = document.getElementById('profileDropdownMenu');
+    const notifDropdown = document.getElementById('notifDropdownMenu');
+    
+    // Close notification dropdown if open
+    notifDropdown.classList.remove('show');
+    
+    // Toggle profile dropdown
+    dropdown.classList.toggle('show');
+  }
+  
+  function clearNotifications() {
+    document.getElementById('notifList').innerHTML = `
+      <div style="padding: 40px 20px; text-align: center; color: var(--text-muted);">
+        <div style="font-size: 2rem; margin-bottom: 8px;">🔔</div>
+        <div>Tidak ada notifikasi</div>
+      </div>
+    `;
+    document.getElementById('notifCount').textContent = '';
+    document.getElementById('notifCount').classList.add('hidden');
+  }
+  
+  // Close dropdowns when clicking outside
+  document.addEventListener('click', (e) => {
+    const notifDropdown = document.getElementById('notifDropdown');
+    const profileDropdown = document.getElementById('profileDropdown');
+    
+    if (notifDropdown && !notifDropdown.contains(e.target)) {
+      document.getElementById('notifDropdownMenu').classList.remove('show');
+    }
+    
+    if (profileDropdown && !profileDropdown.contains(e.target)) {
+      document.getElementById('profileDropdownMenu').classList.remove('show');
+    }
+  });
+  
+  // ============ Modal Functions ============
+  
+  function openProfileModal() {
+    document.getElementById('profileDropdownMenu').classList.remove('show');
+    document.getElementById('profileModal').classList.add('show');
+  }
+  
+  function closeProfileModal() {
+    document.getElementById('profileModal').classList.remove('show');
+  }
+  
+  function openSettingsModal() {
+    document.getElementById('profileDropdownMenu').classList.remove('show');
+    document.getElementById('settingsModal').classList.add('show');
+  }
+  
+  function closeSettingsModal() {
+    document.getElementById('settingsModal').classList.remove('show');
+  }
+  
+  function saveProfile() {
+    // Simulate save
+    const btn = event.target;
+    btn.textContent = '⏳ Menyimpan...';
+    btn.disabled = true;
+    
+    setTimeout(() => {
+      btn.textContent = '✅ Tersimpan!';
+      setTimeout(() => {
+        closeProfileModal();
+        btn.textContent = '💾 Simpan Perubahan';
+        btn.disabled = false;
+      }, 1000);
+    }, 1000);
+  }
+  
+  function saveSettings() {
+    // Simulate save
+    const btn = event.target;
+    btn.textContent = '⏳ Menyimpan...';
+    btn.disabled = true;
+    
+    setTimeout(() => {
+      btn.textContent = '✅ Tersimpan!';
+      setTimeout(() => {
+        closeSettingsModal();
+        btn.textContent = '💾 Simpan Pengaturan';
+        btn.disabled = false;
+      }, 1000);
+    }, 1000);
+  }
+  
+  // Close modals on overlay click
+  document.querySelectorAll('.modal-overlay').forEach(overlay => {
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) {
+        overlay.classList.remove('show');
+      }
+    });
+  });
+  
+  // Close modals on ESC key
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      document.querySelectorAll('.modal-overlay.show').forEach(modal => {
+        modal.classList.remove('show');
+      });
+    }
+  });
+
+  // Start
+  init();
+  </script>
+
+<script src="data/network-data.js"></script>
+<script>
+// Initialize with static data
+window.NETWORK_DATA = NETWORK_DATA;
+console.log('Loaded static network data:', NETWORK_DATA);
+</script>
+<script src="data/dashboard-init.js"></script>
+<script src="data/bug-fixes.js"></script>
+</body>
+</html>
